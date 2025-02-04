@@ -65,6 +65,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '16'
+      - name: Install dependencies
+        run: npm install jsonwebtoken axios
       - name: Trigger Sync in IDP Repo
         env:
           APP_PRIVATE_KEY: \${{ secrets.APP_PRIVATE_KEY }}
