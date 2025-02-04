@@ -39,7 +39,7 @@ jobs:
           if [ -z "$(git status --porcelain)" ]; then
             echo "No changes to commit."
           else
-            git add external-code
+            git add ${{ env.EXTERNAL_REPO }}
             git commit -m "Update external code from repository ${{ env.EXTERNAL_REPO }}"
             git push
           fi
