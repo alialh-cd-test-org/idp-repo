@@ -1,12 +1,13 @@
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 
-// Read secrets from environment variables (these come from your org-level secrets)
+// Read secrets from the environment (available only in IDP repo)
 const privateKey = process.env.APP_PRIVATE_KEY;
 const appId = process.env.APP_ID;
 const installationId = process.env.APP_INSTALLATION_ID;
-const orgName = process.env.ORG_NAME || 'alialh-cd-test-org';
+const orgName = process.env.ORG_NAME || 'my-org';  // change default as needed
 
+// Create a JWT valid for 10 minutes (with 60 sec clock drift allowance)
 const now = Math.floor(Date.now() / 1000);
 const payload = {
   iat: now - 60,
@@ -17,6 +18,7 @@ const payload = {
 const jwtToken = jwt.sign(payload, privateKey, { algorithm: 'RS256' });
 console.log("JWT generated.");
 
+// Function to obtain an installation token using the JWT
 async function getInstallationToken() {
   try {
     const response = await axios.post(
@@ -36,14 +38,18 @@ async function getInstallationToken() {
   }
 }
 
+// Function to update (or create) the workflow file in app-repo
 async function updateAppRepoWorkflow(installationToken) {
   const owner = orgName;
   const repo = 'app-repo';
   const path = '.github/workflows/trigger-sync.yml';
   const commitMessage = 'Add/update workflow to trigger sync to IDP repo';
 
-  // This is the workflow file that will be created in app-repo.
-  // It uses the organization-level secrets, so app-repo will have access to them.
+  // This is the YAML content for the workflow file that will be created in app-repo.
+  // Note:
+  //   - It uses organization-level secrets so that app-repo can access the GitHub App secrets.
+  //   - The inline Node.js code (inside the run step) is wrapped in single quotes,
+  //     and every backtick inside that code is escaped as \` so that the shell does not expand it.
   const workflowContent = `name: Trigger Sync to IDP Repo
 
 on:
@@ -66,31 +72,32 @@ jobs:
           APP_INSTALLATION_ID: \${{ secrets.APP_INSTALLATION_ID }}
           ORG_NAME: \${{ secrets.ORG_NAME }}
         run: |
-          node -e "\
-          const jwt = require('jsonwebtoken');\
-          const axios = require('axios');\
-          const now = Math.floor(Date.now()/1000);\
-          const payload = { iat: now-60, exp: now+600, iss: process.env.APP_ID };\
-          const token = jwt.sign(payload, process.env.APP_PRIVATE_KEY, { algorithm: 'RS256' });\
-          axios.post(\`https://api.github.com/app/installations/\${process.env.APP_INSTALLATION_ID}/access_tokens\`, {}, {\
-            headers: { Authorization: \`Bearer \${token}\`, Accept: 'application/vnd.github.v3+json' }\
-          }).then(res => {\
-            const installationToken = res.data.token;\
-            return axios.post(\
-              \`https://api.github.com/repos/\${process.env.ORG_NAME}/idp-repo/dispatches\`,\
-              { event_type: 'sync-code' },\
-              { headers: { Authorization: \`token \${installationToken}\`, Accept: 'application/vnd.github.v3+json' } }\
-            );\
-          }).then(() => {\
-            console.log('Dispatch event sent to IDP repo.');\
-          }).catch(err => {\
-            console.error('Error sending dispatch event:', err.response ? err.response.data : err);\
-            process.exit(1);\
-          });"
+          node -e 'const jwt = require("jsonwebtoken");
+          const axios = require("axios");
+          const now = Math.floor(Date.now()/1000);
+          const payload = { iat: now-60, exp: now+600, iss: process.env.APP_ID };
+          const token = jwt.sign(payload, process.env.APP_PRIVATE_KEY, { algorithm: "RS256" });
+          axios.post(\`https://api.github.com/app/installations/\${process.env.APP_INSTALLATION_ID}/access_tokens\`, {}, {
+            headers: { Authorization: \`Bearer \${token}\`, Accept: "application/vnd.github.v3+json" }
+          }).then(res => {
+            const installationToken = res.data.token;
+            return axios.post(
+              \`https://api.github.com/repos/\${process.env.ORG_NAME}/idp-repo/dispatches\`,
+              { event_type: "sync-code" },
+              { headers: { Authorization: \`token \${installationToken}\`, Accept: "application/vnd.github.v3+json" } }
+            );
+          }).then(() => {
+            console.log("Dispatch event sent to IDP repo.");
+          }).catch(err => {
+            console.error("Error sending dispatch event:", err.response ? err.response.data : err);
+            process.exit(1);
+          });'
 `;
 
+  // Base64-encode the workflow content (as required by the GitHub API)
   const contentBase64 = Buffer.from(workflowContent).toString('base64');
 
+  // Check if the file already exists (to get its SHA, if it does)
   let sha;
   try {
     const getResponse = await axios.get(
@@ -107,6 +114,7 @@ jobs:
     console.log("Workflow file does not exist; it will be created.");
   }
 
+  // Create or update the file in app-repo
   try {
     const putResponse = await axios.put(
       `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
