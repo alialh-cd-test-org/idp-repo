@@ -22,18 +22,17 @@ jobs:
 
       - name: Configure webhook
         run: |
-          # Create organization-level webhook for the repository
+          # Create repository-level webhook
           curl -X POST \
             -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/orgs/${{ github.repository_owner }}/hooks" \
+            "https://api.github.com/repos/${{ github.repository_owner }}/${{ inputs.repo_name }}/hooks" \
             -d '{
               "name": "web",
               "active": true,
               "events": ["push"],
               "config": {
                 "url": "https://api.github.com/repos/${{ github.repository_owner }}/idp-repo/dispatches",
-                "content_type": "application/json",
-                "secret": "${{ steps.generate_token.outputs.token }}"
+                "content_type": "application/json"
               }
             }'
