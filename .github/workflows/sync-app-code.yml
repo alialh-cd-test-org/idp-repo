@@ -1,0 +1,43 @@
+name: Sync App Code into IDP Repo
+
+on:
+  repository_dispatch:
+    types: [sync-code]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout IDP Repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: npm install jsonwebtoken axios
+
+      - name: Download and extract app-repo code
+        env:
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_INSTALLATION_ID: ${{ secrets.APP_INSTALLATION_ID }}
+          ORG_NAME: ${{ secrets.ORG_NAME }}
+        run: node download_app_code.js
+
+      - name: Commit and push changes if any
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to commit."
+          else
+            git add app-code
+            git commit -m "Update app-code from app-repo"
+            git push
+          fi
