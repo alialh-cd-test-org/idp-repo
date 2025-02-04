@@ -22,22 +22,23 @@ jobs:
 
       - name: Create webhook
         run: |
-          # First, let's remove any existing webhooks
+          TOKEN="${{ steps.generate_token.outputs.token }}"
+          
+          # Delete existing webhooks
+          echo "Fetching existing webhooks..."
           HOOKS_URL="https://api.github.com/repos/${{ github.repository_owner }}/${{ inputs.repo_name }}/hooks"
-          
-          # Get existing hooks
-          existing_hooks=$(curl -s -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" $HOOKS_URL)
-          
-          # Delete each existing hook
+          existing_hooks=$(curl -s -H "Authorization: Bearer $TOKEN" "$HOOKS_URL")
           echo "$existing_hooks" | jq -r '.[] | .id' | while read hook_id; do
             if [ ! -z "$hook_id" ]; then
-              curl -X DELETE -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" "$HOOKS_URL/$hook_id"
+              echo "Deleting webhook $hook_id..."
+              curl -X DELETE -H "Authorization: Bearer $TOKEN" "$HOOKS_URL/$hook_id"
             fi
           done
           
-          # Create new webhook
+          # Create new webhook with authentication
+          echo "Creating new webhook..."
           curl -X POST \
-            -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" \
+            -H "Authorization: Bearer $TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "$HOOKS_URL" \
             -d '{
@@ -45,8 +46,9 @@ jobs:
               "active": true,
               "events": ["push"],
               "config": {
-                "url": "https://api.github.com/repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/dispatches",
+                "url": "https://api.github.com/repos/${{ github.repository_owner }}/idp-repo/dispatches",
                 "content_type": "application/json",
-                "insecure_ssl": "0"
+                "insecure_ssl": "0",
+                "secret": "${{ steps.generate_token.outputs.token }}"
               }
             }'
