@@ -5,7 +5,7 @@ const axios = require('axios');
 const privateKey = process.env.APP_PRIVATE_KEY;
 const appId = process.env.APP_ID;
 const installationId = process.env.APP_INSTALLATION_ID;
-const orgName = process.env.ORG_NAME || 'my-org';
+const orgName = process.env.ORG_NAME || 'alialh-cd-test-org';
 
 const now = Math.floor(Date.now() / 1000);
 const payload = {
