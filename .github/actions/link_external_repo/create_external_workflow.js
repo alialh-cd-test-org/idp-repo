@@ -43,12 +43,12 @@ async function updateExternalRepoWorkflow(installationToken) {
   const owner = ORG_NAME; // Using the organization name as owner.
   const repo = REPO_NAME;
   const path = '.github/workflows/trigger-sync.yml';
-  const commitMessage = 'Update trigger workflow for syncing to IDP repo';
+  const commitMessage = 'Update trigger workflow for syncing to Mono repo';
 
   // The workflow content to be created in the external repo.
   // Note: The inline Node.js snippet is wrapped in single quotes.
   // The dispatch call now includes a client_payload with repo_name.
-  const workflowContent = `name: Trigger Sync to IDP Repo
+  const workflowContent = `name: Trigger Sync to Mono Repo
 
 on:
   push:
@@ -82,7 +82,7 @@ jobs:
           }).then(res => {
             const instToken = res.data.token;
             return axios.post(
-              \`https://api.github.com/repos/\${process.env.ORG_NAME}/idp-repo/dispatches\`,
+              \`https://api.github.com/repos/\${process.env.ORG_NAME}/mono-repo/dispatches\`,
               { event_type: "sync-external-code", client_payload: { repo_name: "${REPO_NAME}" } },
               { headers: { Authorization: \`token \${instToken}\`, Accept: "application/vnd.github.v3+json" } }
             );
