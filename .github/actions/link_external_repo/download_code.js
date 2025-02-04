@@ -62,10 +62,10 @@ async function downloadAndExtractExternalRepo() {
     execSync(`mkdir temp_${repo}`);
     execSync(`tar -xzf ${repo}.tar.gz -C temp_${repo} --strip-components=1`);
     // Remove any previous external-code folder and rename the extracted folder.
-    execSync('rm -rf external-code');
-    execSync(`mv temp_${repo} external-code`);
+    execSync(`rm -rf ${repo}`);
+    execSync(`mv temp_${repo} ${repo}`);
     execSync(`rm ${repo}.tar.gz`);
-    console.log(`Repository ${repo} code extracted into the 'external-code' folder.`);
+    console.log(`Repository ${repo} code extracted into the '${repo}' folder.`);
   } catch (err) {
     console.error("Error extracting tarball:", err);
     process.exit(1);
