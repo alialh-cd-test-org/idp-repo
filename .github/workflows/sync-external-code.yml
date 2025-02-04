@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: npm install jsonwebtoken axios
 
-      - name: Download and extract external repo code
+      - name: Download and extract ${{ env.EXTERNAL_REPO }} repo code
         env:
           APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           APP_ID: ${{ secrets.APP_ID }}
@@ -40,6 +40,6 @@ jobs:
             echo "No changes to commit."
           else
             git add ${{ env.EXTERNAL_REPO }}
-            git commit -m "Update external code from repository ${{ env.EXTERNAL_REPO }}"
+            git commit -m "Update code from repository ${{ env.EXTERNAL_REPO }}"
             git push
           fi

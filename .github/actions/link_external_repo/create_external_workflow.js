@@ -83,7 +83,7 @@ jobs:
             const instToken = res.data.token;
             return axios.post(
               \`https://api.github.com/repos/\${process.env.ORG_NAME}/idp-repo/dispatches\`,
-              { event_type: "sync-code", client_payload: { repo_name: "${REPO_NAME}" } },
+              { event_type: "sync-external-code", client_payload: { repo_name: "${REPO_NAME}" } },
               { headers: { Authorization: \`token \${instToken}\`, Accept: "application/vnd.github.v3+json" } }
             );
           }).then(() => {
