@@ -23,9 +23,9 @@ jobs:
 
       - name: Generate GitHub App Token and Update App Repo Workflow
         env:
-          GITHUB_APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
-          GITHUB_APP_ID: ${{ secrets.APP_ID }}
-          GITHUB_APP_INSTALLATION_ID: ${{ secrets.APP_INSTALLATION_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_INSTALLATION_ID: ${{ secrets.APP_INSTALLATION_ID }}
           ORG_NAME: alialh-cd-test-org   # Replace with your organization name if not using a secret
         run: |
           node generate_token_and_update.js
