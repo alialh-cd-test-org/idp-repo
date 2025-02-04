@@ -21,15 +21,19 @@ console.log("JWT generated.");
 // Function to get an installation token using the JWT
 async function getInstallationToken() {
   try {
-    const response = await axios.post(`https://api.github.com/app/installations/${installationId}/access_tokens`, {}, {
-      headers: {
-        Authorization: `Bearer ${jwtToken}`,
-        Accept: 'application/vnd.github.v3+json'
+    const response = await axios.post(
+      `https://api.github.com/app/installations/${installationId}/access_tokens`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${jwtToken}`,
+          Accept: 'application/vnd.github.v3+json'
+        }
       }
-    });
+    );
     return response.data.token;
   } catch (error) {
-    console.error("Error fetching installation token:", error.response.data);
+    console.error("Error fetching installation token:", error.response ? error.response.data : error);
     process.exit(1);
   }
 }
@@ -42,8 +46,8 @@ async function updateAppRepoWorkflow(installationToken) {
   const path = '.github/workflows/trigger-sync.yml';
   const commitMessage = 'Add/update workflow to trigger sync to IDP repo';
 
-  // Define the content of the workflow file to be created in app-repo
-  // This workflow will trigger on pushes to app-repo and then call the IDP repo
+  // Define the content of the workflow file to be created in app-repo.
+  // This workflow will trigger on pushes to app-repo and then call the IDP repo.
   const workflowContent = `
 name: Trigger Sync to IDP Repo
 
@@ -63,18 +67,22 @@ jobs:
           --data '{"event_type": "sync-code"}' \\
           https://api.github.com/repos/${owner}/idp-repo/dispatches
 `;
+
   // Base64 encode the file content
   const contentBase64 = Buffer.from(workflowContent).toString('base64');
 
   // Check if the file already exists (to get its SHA)
   let sha = null;
   try {
-    const getResponse = await axios.get(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
-      headers: {
-        Authorization: `token ${installationToken}`,
-        Accept: 'application/vnd.github.v3+json'
+    const getResponse = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
+      {
+        headers: {
+          Authorization: `token ${installationToken}`,
+          Accept: 'application/vnd.github.v3+json'
+        }
       }
-    });
+    );
     sha = getResponse.data.sha;
   } catch (err) {
     console.log("File does not exist; creating a new one.");
@@ -82,19 +90,23 @@ jobs:
 
   // Create or update the file via the GitHub API
   try {
-    const putResponse = await axios.put(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
-      message: commitMessage,
-      content: contentBase64,
-      sha: sha
-    }, {
-      headers: {
-        Authorization: `token ${installationToken}`,
-        Accept: 'application/vnd.github.v3+json'
+    const putResponse = await axios.put(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
+      {
+        message: commitMessage,
+        content: contentBase64,
+        sha: sha
+      },
+      {
+        headers: {
+          Authorization: `token ${installationToken}`,
+          Accept: 'application/vnd.github.v3+json'
+        }
       }
-    });
+    );
     console.log("Workflow file updated in app repo:", putResponse.data.content.path);
   } catch (error) {
-    console.error("Error updating workflow file:", error.response.data);
+    console.error("Error updating workflow file:", error.response ? error.response.data : error);
     process.exit(1);
   }
 }
