@@ -1,0 +1,32 @@
+name: Sync App Code into IDP Repo
+
+on:
+  repository_dispatch:
+    types: [sync-code]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout IDP Repo
+        uses: actions/checkout@v3
+
+      - name: Clone App Repo
+        run: |
+          # Clone the app repo into a temporary folder (adjust URL as needed)
+          git clone https://github.com/alialh-cd-test-org/app-repo.git app-temp
+
+      - name: Copy App Repo Code into Subfolder
+        run: |
+          mkdir -p synced-app-code
+          # Remove any old contents (optional)
+          rm -rf synced-app-code/*
+          cp -R app-temp/* synced-app-code/
+
+      - name: Commit & Push Changes
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add synced-app-code
+          # Only commit if there are changes
+          git diff --cached --quiet || git commit -m "Sync app repo code" && git push origin HEAD:main
