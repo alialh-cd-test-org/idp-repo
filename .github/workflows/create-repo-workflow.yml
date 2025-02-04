@@ -1,0 +1,30 @@
+name: Create/Update App Repo Workflow
+
+on:
+  workflow_dispatch:   # Manual trigger
+  push:
+    branches:
+      - main
+
+jobs:
+  update-app-workflow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout IDP Repo
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: npm install jsonwebtoken axios
+
+      - name: Generate GitHub App Token and Update App Repo Workflow
+        env:
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_INSTALLATION_ID: ${{ secrets.APP_INSTALLATION_ID }}
+          ORG_NAME: ${{ secrets.ORG_NAME }}  # e.g. "alialh-cd-test-org"
+        run: node generate_token_and_update.js
