@@ -22,17 +22,31 @@ jobs:
 
       - name: Create webhook
         run: |
+          # First, let's remove any existing webhooks
+          HOOKS_URL="https://api.github.com/repos/${{ github.repository_owner }}/${{ inputs.repo_name }}/hooks"
+          
+          # Get existing hooks
+          existing_hooks=$(curl -s -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" $HOOKS_URL)
+          
+          # Delete each existing hook
+          echo "$existing_hooks" | jq -r '.[] | .id' | while read hook_id; do
+            if [ ! -z "$hook_id" ]; then
+              curl -X DELETE -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" "$HOOKS_URL/$hook_id"
+            fi
+          done
+          
+          # Create new webhook
           curl -X POST \
             -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository_owner }}/${{ inputs.repo_name }}/hooks" \
+            "$HOOKS_URL" \
             -d '{
               "name": "web",
               "active": true,
               "events": ["push"],
               "config": {
-                "url": "https://api.github.com/repos/${{ github.repository }}/dispatches",
-                "content_type": "json",
+                "url": "https://api.github.com/repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/dispatches",
+                "content_type": "application/json",
                 "insecure_ssl": "0"
               }
             }'
