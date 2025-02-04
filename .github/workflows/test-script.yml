@@ -1,0 +1,17 @@
+name: Test Setup Script
+
+on:
+  workflow_dispatch:  # This enables manual triggers from the GitHub UI
+  push:
+    branches:
+      - main
+
+jobs:
+  run-setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Run Setup Script
+        run: ./setup-app-workflow.sh
