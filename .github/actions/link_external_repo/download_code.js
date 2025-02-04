@@ -1,45 +1,75 @@
-name: Sync External Repo Code into IDP Repo
+const jwt = require('jsonwebtoken');
+const axios = require('axios');
+const { execSync } = require('child_process');
 
-on:
-  repository_dispatch:
-    types: [sync-code]
+// Read organization-level secrets from environment variables.
+const { APP_PRIVATE_KEY, APP_ID, APP_INSTALLATION_ID, ORG_NAME } = process.env;
+if (!APP_PRIVATE_KEY || !APP_ID || !APP_INSTALLATION_ID || !ORG_NAME) {
+  console.error("Missing required secrets in sync script.");
+  process.exit(1);
+}
 
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    # Set the external repository name from the event payload.
-    env:
-      EXTERNAL_REPO: ${{ github.event.client_payload.repo_name }}
-    steps:
-      - name: Checkout IDP Repo
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+// The external repository name is provided via EXTERNAL_REPO.
+const repo = process.env.EXTERNAL_REPO;
+if (!repo) {
+  console.error("Missing external repository name. Make sure EXTERNAL_REPO is set.");
+  process.exit(1);
+}
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
+// Create a JWT.
+const now = Math.floor(Date.now() / 1000);
+const payload = { iat: now - 60, exp: now + 600, iss: APP_ID };
+const jwtToken = jwt.sign(payload, APP_PRIVATE_KEY, { algorithm: 'RS256' });
 
-      - name: Install dependencies
-        run: npm install jsonwebtoken axios
+async function getInstallationToken() {
+  try {
+    const res = await axios.post(
+      `https://api.github.com/app/installations/${APP_INSTALLATION_ID}/access_tokens`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${jwtToken}`,
+          Accept: 'application/vnd.github.v3+json'
+        }
+      }
+    );
+    return res.data.token;
+  } catch (err) {
+    console.error("Error obtaining installation token:", err.response ? err.response.data : err);
+    process.exit(1);
+  }
+}
 
-      - name: Download and extract external repo code
-        env:
-          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
-          APP_ID: ${{ secrets.APP_ID }}
-          APP_INSTALLATION_ID: ${{ secrets.APP_INSTALLATION_ID }}
-          ORG_NAME: ${{ secrets.ORG_NAME }}
-        run: node download_code.js
+async function downloadAndExtractExternalRepo() {
+  const installationToken = await getInstallationToken();
+  console.log("Installation token obtained.");
 
-      - name: Commit and push changes if any
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "No changes to commit."
-          else
-            git add external-code
-            git commit -m "Update external code from repository ${{ env.EXTERNAL_REPO }}"
-            git push
-          fi
+  const owner = ORG_NAME;
+  const ref = 'main';
+  const tarballUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${ref}`;
+
+  console.log("Downloading tarball from:", tarballUrl);
+  try {
+    execSync(`curl -L -H "Authorization: token ${installationToken}" -o ${repo}.tar.gz "${tarballUrl}"`, { stdio: 'inherit' });
+  } catch (err) {
+    console.error("Error downloading tarball:", err);
+    process.exit(1);
+  }
+
+  try {
+    // Remove any previous extraction and extract the tarball.
+    execSync(`rm -rf temp_${repo}`);
+    execSync(`mkdir temp_${repo}`);
+    execSync(`tar -xzf ${repo}.tar.gz -C temp_${repo} --strip-components=1`);
+    // Remove any previous external-code folder and rename the extracted folder.
+    execSync('rm -rf external-code');
+    execSync(`mv temp_${repo} external-code`);
+    execSync(`rm ${repo}.tar.gz`);
+    console.log(`Repository ${repo} code extracted into the 'external-code' folder.`);
+  } catch (err) {
+    console.error("Error extracting tarball:", err);
+    process.exit(1);
+  }
+}
+
+downloadAndExtractExternalRepo();
