@@ -1,8 +1,10 @@
-name: Sync App Code into IDP Repo
+name: Sync App Code into IDP Repo using GitHub App
 
 on:
-  repository_dispatch:
-    types: [sync-code]
+  workflow_dispatch:   # Allows manual triggering from the GitHub UI
+  push:
+    branches:
+      - main
 
 jobs:
   sync:
@@ -11,22 +13,19 @@ jobs:
       - name: Checkout IDP Repo
         uses: actions/checkout@v3
 
-      - name: Clone App Repo
-        run: |
-          # Clone the app repo into a temporary folder (adjust URL as needed)
-          git clone https://github.com/alialh-cd-test-org/app-repo.git app-temp
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
 
-      - name: Copy App Repo Code into Subfolder
-        run: |
-          mkdir -p synced-app-code
-          # Remove any old contents (optional)
-          rm -rf synced-app-code/*
-          cp -R app-temp/* synced-app-code/
+      - name: Install dependencies
+        run: npm install jsonwebtoken axios
 
-      - name: Commit & Push Changes
+      - name: Generate GitHub App Token and Update App Repo Workflow
+        env:
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          GITHUB_APP_ID: ${{ secrets.APP_ID }}
+          GITHUB_APP_INSTALLATION_ID: ${{ secrets.APP_INSTALLATION_ID }}
+          ORG_NAME: alialh-cd-test-org   # Replace with your organization name if not using a secret
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
-          git add synced-app-code
-          # Only commit if there are changes
-          git diff --cached --quiet || git commit -m "Sync app repo code" && git push origin HEAD:main
+          node generate_token_and_update.js
