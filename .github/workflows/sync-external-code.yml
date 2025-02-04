@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: npm install jsonwebtoken axios
 
-      - name: Download and extract ${{ env.EXTERNAL_REPO }} repo code
+      - name: Download and extract ${{ env.EXTERNAL_REPO }} code
         env:
           APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           APP_ID: ${{ secrets.APP_ID }}
